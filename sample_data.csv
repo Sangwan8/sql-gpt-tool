@@ -1,0 +1,26 @@
+customer_id,customer_name,product,category,amount,quantity,date,region,status
+1,John Smith,Laptop,Electronics,1299.99,1,2024-01-15,North America,Completed
+2,Sarah Johnson,Mouse,Accessories,29.99,2,2024-01-16,North America,Completed
+3,Mike Chen,Keyboard,Accessories,79.99,1,2024-01-16,Asia,Completed
+4,Emma Wilson,Monitor,Electronics,399.99,1,2024-01-17,Europe,Completed
+5,Luis Garcia,Laptop,Electronics,999.99,1,2024-01-17,South America,Pending
+6,Anna Schmidt,Webcam,Accessories,59.99,1,2024-01-18,Europe,Completed
+7,James Brown,Desktop PC,Electronics,1899.99,1,2024-01-19,North America,Completed
+8,Maria Rodriguez,Mouse,Accessories,29.99,3,2024-01-19,South America,Completed
+9,David Lee,Laptop,Electronics,1499.99,1,2024-01-20,Asia,Completed
+10,Sophie Martin,Keyboard,Accessories,89.99,2,2024-01-20,Europe,Cancelled
+11,Robert Taylor,Monitor,Electronics,449.99,2,2024-01-21,North America,Completed
+12,Liu Wei,Webcam,Accessories,69.99,1,2024-01-21,Asia,Completed
+13,Carlos Silva,Desktop PC,Electronics,2199.99,1,2024-01-22,South America,Completed
+14,Nina Petrov,Laptop,Electronics,1199.99,1,2024-01-22,Europe,Completed
+15,Tom Anderson,Mouse,Accessories,39.99,1,2024-01-23,North America,Completed
+16,Yuki Tanaka,Keyboard,Accessories,99.99,1,2024-01-23,Asia,Pending
+17,Pierre Dubois,Monitor,Electronics,499.99,1,2024-01-24,Europe,Completed
+18,Ahmed Hassan,Laptop,Electronics,1399.99,1,2024-01-24,Africa,Completed
+19,Isabella Rossi,Webcam,Accessories,79.99,2,2024-01-25,Europe,Completed
+20,Jack Williams,Desktop PC,Electronics,1799.99,1,2024-01-25,North America,Completed
+21,Zhang Wei,Mouse,Accessories,24.99,4,2024-01-26,Asia,Completed
+22,Ana Santos,Keyboard,Accessories,69.99,1,2024-01-26,South America,Completed
+23,Michael Jones,Monitor,Electronics,379.99,1,2024-01-27,North America,Cancelled
+24,Elena Popov,Laptop,Electronics,1099.99,1,2024-01-27,Europe,Completed
+25,Kim Jong,Webcam,Accessories,89.99,1,2024-01-28,Asia,Completed
