@@ -1,0 +1,452 @@
+// NLQ to SQL Generator - Frontend JavaScript
+
+let currentSchema = null;
+let currentQuery = null;
+let currentResults = null;
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', function() {
+    setupEventListeners();
+    loadExamples();
+});
+
+// Set up event listeners
+function setupEventListeners() {
+    // File upload
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    // Drag and drop
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleFile(files[0]);
+        }
+    });
+    
+    // Query input enter key
+    const queryInput = document.getElementById('queryInput');
+    queryInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            generateSQL();
+        }
+    });
+}
+
+// Handle file selection
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) {
+        handleFile(file);
+    }
+}
+
+// Handle file upload
+async function handleFile(file) {
+    // Validate file
+    const validTypes = ['text/csv', 'application/vnd.ms-excel', 
+                       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+    
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.csv')) {
+        showToast('Please upload a valid CSV or Excel file', 'error');
+        return;
+    }
+    
+    if (file.size > 50 * 1024 * 1024) {
+        showToast('File size must be less than 50MB', 'error');
+        return;
+    }
+    
+    // Prepare upload
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    showLoading('Uploading and processing file...');
+    
+    try {
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            displayFileInfo(file, data.stats);
+            displaySchema(data.schema);
+            displaySampleData(data.sample_data);
+            currentSchema = data.schema;
+            
+            // Show query section
+            document.getElementById('querySection').style.display = 'block';
+            
+            // Load context-aware examples
+            loadExamples();
+            
+            showToast('File uploaded successfully!', 'success');
+        } else {
+            showToast(data.error || 'Failed to process file', 'error');
+        }
+    } catch (error) {
+        showToast('Upload failed: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Display file information
+function displayFileInfo(file, stats) {
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const fileStats = document.getElementById('fileStats');
+    
+    fileName.textContent = file.name;
+    fileStats.textContent = `${stats.rows} rows × ${stats.columns} columns`;
+    
+    fileInfo.style.display = 'block';
+    document.getElementById('uploadArea').style.display = 'none';
+}
+
+// Display schema
+function displaySchema(schema) {
+    const schemaGrid = document.getElementById('schemaGrid');
+    schemaGrid.innerHTML = '';
+    
+    schema.forEach(col => {
+        const item = document.createElement('div');
+        item.className = 'schema-item';
+        item.innerHTML = `
+            <span class="schema-column">${col.column}</span>
+            <span class="schema-type">${col.type}</span>
+            <span class="schema-stats">${col.unique} unique, ${col.nulls} nulls</span>
+        `;
+        schemaGrid.appendChild(item);
+    });
+    
+    document.getElementById('schemaSection').style.display = 'block';
+}
+
+// Display sample data
+function displaySampleData(sampleData) {
+    if (!sampleData || sampleData.length === 0) return;
+    
+    const dataPreview = document.getElementById('dataPreview');
+    const columns = Object.keys(sampleData[0]);
+    
+    let tableHTML = '<table class="data-table"><thead><tr>';
+    columns.forEach(col => {
+        tableHTML += `<th>${col}</th>`;
+    });
+    tableHTML += '</tr></thead><tbody>';
+    
+    sampleData.forEach(row => {
+        tableHTML += '<tr>';
+        columns.forEach(col => {
+            tableHTML += `<td>${row[col] !== null ? row[col] : '<span style="color: #999;">null</span>'}</td>`;
+        });
+        tableHTML += '</tr>';
+    });
+    
+    tableHTML += '</tbody></table>';
+    dataPreview.innerHTML = tableHTML;
+    
+    document.getElementById('sampleData').style.display = 'block';
+}
+
+// Load example queries
+async function loadExamples() {
+    try {
+        const response = await fetch('/examples');
+        const data = await response.json();
+        
+        const examplesGrid = document.getElementById('examplesGrid');
+        examplesGrid.innerHTML = '';
+        
+        data.examples.forEach(example => {
+            const chip = document.createElement('div');
+            chip.className = 'example-chip';
+            chip.textContent = example;
+            chip.onclick = () => {
+                document.getElementById('queryInput').value = example;
+                generateSQL();
+            };
+            examplesGrid.appendChild(chip);
+        });
+    } catch (error) {
+        console.error('Failed to load examples:', error);
+    }
+}
+
+// Generate SQL query
+async function generateSQL() {
+    const queryInput = document.getElementById('queryInput');
+    const prompt = queryInput.value.trim();
+    
+    if (!prompt) {
+        showToast('Please enter a question or description', 'warning');
+        return;
+    }
+    
+    if (!currentSchema) {
+        showToast('Please upload a data file first', 'warning');
+        return;
+    }
+    
+    showLoading('Generating SQL query...');
+    
+    try {
+        const response = await fetch('/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prompt })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            displaySQL(data.query, data.validation, data.from_cache);
+            currentQuery = data.query;
+            showToast('SQL query generated successfully!', 'success');
+        } else {
+            showToast(data.error || 'Failed to generate query', 'error');
+        }
+    } catch (error) {
+        showToast('Generation failed: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Display generated SQL
+function displaySQL(query, validation, fromCache) {
+    const sqlOutput = document.getElementById('sqlOutput');
+    const sqlCode = document.getElementById('sqlCode');
+    const validationStatus = document.getElementById('validationStatus');
+    
+    sqlCode.textContent = query;
+    
+    // Highlight syntax
+    Prism.highlightElement(sqlCode);
+    
+    // Show validation status
+    validationStatus.innerHTML = `
+        <i class="fas fa-check-circle"></i>
+        ${validation}
+        ${fromCache ? '<span style="margin-left: 1rem; opacity: 0.7;">(from cache)</span>' : ''}
+    `;
+    
+    sqlOutput.style.display = 'block';
+    
+    // Scroll to SQL output
+    sqlOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Copy SQL to clipboard
+async function copySQL() {
+    if (!currentQuery) return;
+    
+    try {
+        await navigator.clipboard.writeText(currentQuery);
+        showToast('SQL copied to clipboard!', 'success');
+    } catch (error) {
+        showToast('Failed to copy SQL', 'error');
+    }
+}
+
+// Execute SQL query
+async function executeSQL() {
+    if (!currentQuery) {
+        showToast('No query to execute', 'warning');
+        return;
+    }
+    
+    showLoading('Executing query...');
+    
+    try {
+        const response = await fetch('/execute', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ query: currentQuery })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            displayResults(data);
+            currentResults = data;
+            showToast(`Query executed: ${data.row_count} rows returned`, 'success');
+        } else {
+            showToast(data.error || 'Failed to execute query', 'error');
+        }
+    } catch (error) {
+        showToast('Execution failed: ' + error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+// Display query results
+function displayResults(results) {
+    const resultsSection = document.getElementById('resultsSection');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const rowCount = document.getElementById('rowCount');
+    
+    // Update row count
+    rowCount.textContent = `${results.row_count} rows`;
+    if (results.limited) {
+        rowCount.textContent += ' (limited to 1000)';
+    }
+    
+    // Create results table
+    if (results.data.length === 0) {
+        resultsContainer.innerHTML = '<p style="padding: 2rem; text-align: center; color: #999;">No results found</p>';
+    } else {
+        let tableHTML = '<table class="results-table"><thead><tr>';
+        
+        results.columns.forEach(col => {
+            tableHTML += `<th>${col}</th>`;
+        });
+        tableHTML += '</tr></thead><tbody>';
+        
+        results.data.forEach(row => {
+            tableHTML += '<tr>';
+            results.columns.forEach(col => {
+                const value = row[col];
+                tableHTML += `<td>${value !== null ? value : '<span style="color: #999;">null</span>'}</td>`;
+            });
+            tableHTML += '</tr>';
+        });
+        
+        tableHTML += '</tbody></table>';
+        resultsContainer.innerHTML = tableHTML;
+    }
+    
+    resultsSection.style.display = 'block';
+    resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Export results to CSV
+function exportResults() {
+    if (!currentResults || !currentResults.data || currentResults.data.length === 0) {
+        showToast('No results to export', 'warning');
+        return;
+    }
+    
+    // Convert to CSV
+    const headers = currentResults.columns.join(',');
+    const rows = currentResults.data.map(row => {
+        return currentResults.columns.map(col => {
+            const value = row[col];
+            // Handle values that contain commas
+            if (value !== null && value.toString().includes(',')) {
+                return `"${value}"`;
+            }
+            return value !== null ? value : '';
+        }).join(',');
+    });
+    
+    const csv = [headers, ...rows].join('\n');
+    
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `query_results_${new Date().getTime()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast('Results exported successfully!', 'success');
+}
+
+// Remove uploaded file
+function removeFile() {
+    if (confirm('Remove this file and clear all data?')) {
+        // Reset UI
+        document.getElementById('fileInfo').style.display = 'none';
+        document.getElementById('uploadArea').style.display = 'block';
+        document.getElementById('schemaSection').style.display = 'none';
+        document.getElementById('querySection').style.display = 'none';
+        document.getElementById('sqlOutput').style.display = 'none';
+        document.getElementById('resultsSection').style.display = 'none';
+        
+        // Clear data
+        currentSchema = null;
+        currentQuery = null;
+        currentResults = null;
+        
+        // Clear file input
+        document.getElementById('fileInput').value = '';
+        
+        showToast('File removed', 'success');
+    }
+}
+
+// Show loading overlay
+function showLoading(text = 'Processing...') {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    loadingText.textContent = text;
+    overlay.classList.add('active');
+}
+
+// Hide loading overlay
+function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.classList.remove('active');
+}
+
+// Show toast notification
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    let icon = 'fa-info-circle';
+    if (type === 'success') icon = 'fa-check-circle';
+    if (type === 'error') icon = 'fa-exclamation-circle';
+    if (type === 'warning') icon = 'fa-exclamation-triangle';
+    
+    toast.innerHTML = `
+        <i class="fas ${icon}"></i>
+        <span class="toast-message">${message}</span>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            container.removeChild(toast);
+        }, 300);
+    }, 5000);
+}
+
+// Update status indicator
+function updateStatus(status, color = 'green') {
+    const indicator = document.getElementById('statusIndicator');
+    const icon = indicator.querySelector('i');
+    
+    indicator.innerHTML = `<i class="fas fa-circle" style="color: ${color}"></i> ${status}`;
+}
