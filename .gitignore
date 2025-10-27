@@ -1,9 +1,7 @@
+.venv/
 venv/
 __pycache__/
 .env
+uploads/
 cache/
 logs/
-uploads/
-*.pyc
-*.pyo
-*.DS_Store
