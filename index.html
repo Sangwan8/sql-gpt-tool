@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NLQ to SQL Generator - Natural Language Query Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-database"></i>
+                    <h1>NLQ to SQL Generator</h1>
+                </div>
+                <div class="header-info">
+                    <span class="status-indicator" id="statusIndicator">
+                        <i class="fas fa-circle"></i> Ready
+                    </span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Upload Section -->
+            <section class="upload-section card">
+                <h2><i class="fas fa-upload"></i> Step 1: Upload Your Data</h2>
+                <div class="upload-area" id="uploadArea">
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" hidden>
+                    <div class="upload-content">
+                        <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                        <p class="upload-text">Drag & drop your CSV file here or click to browse</p>
+                        <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                            Choose File
+                        </button>
+                        <p class="upload-hint">Supports CSV, Excel files (Max 50MB)</p>
+                    </div>
+                </div>
+                
+                <!-- File Info -->
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <div class="file-details">
+                        <i class="fas fa-file-csv"></i>
+                        <div>
+                            <span class="file-name" id="fileName"></span>
+                            <span class="file-stats" id="fileStats"></span>
+                        </div>
+                        <button class="btn btn-danger btn-sm" onclick="removeFile()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Schema Display -->
+                <div class="schema-section" id="schemaSection" style="display: none;">
+                    <h3><i class="fas fa-table"></i> Detected Schema</h3>
+                    <div class="schema-grid" id="schemaGrid"></div>
+                    
+                    <!-- Sample Data -->
+                    <div class="sample-data" id="sampleData" style="display: none;">
+                        <h4><i class="fas fa-eye"></i> Sample Data Preview</h4>
+                        <div class="data-preview" id="dataPreview"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Query Section -->
+            <section class="query-section card" id="querySection" style="display: none;">
+                <h2><i class="fas fa-magic"></i> Step 2: Ask Your Question</h2>
+                
+                <!-- Examples -->
+                <div class="examples-container" id="examplesContainer">
+                    <p class="examples-label">Try these examples:</p>
+                    <div class="examples-grid" id="examplesGrid"></div>
+                </div>
+
+                <!-- Query Input -->
+                <div class="query-input-container">
+                    <div class="input-wrapper">
+                        <input type="text" 
+                               id="queryInput" 
+                               class="query-input" 
+                               placeholder="E.g., Show me the top 10 customers by total sales"
+                               autocomplete="off">
+                        <button class="btn btn-primary generate-btn" id="generateBtn" onclick="generateSQL()">
+                            <i class="fas fa-wand-magic-sparkles"></i> Generate SQL
+                        </button>
+                    </div>
+                    <div class="input-hints">
+                        <span><i class="fas fa-lightbulb"></i> Describe what data you want to see in plain English</span>
+                    </div>
+                </div>
+
+                <!-- Generated SQL -->
+                <div class="sql-output" id="sqlOutput" style="display: none;">
+                    <div class="output-header">
+                        <h3><i class="fas fa-code"></i> Generated SQL Query</h3>
+                        <div class="output-actions">
+                            <button class="btn btn-sm" onclick="copySQL()">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="btn btn-sm btn-success" onclick="executeSQL()">
+                                <i class="fas fa-play"></i> Execute
+                            </button>
+                        </div>
+                    </div>
+                    <pre class="sql-code"><code class="language-sql" id="sqlCode"></code></pre>
+                    <div class="validation-status" id="validationStatus"></div>
+                </div>
+
+                <!-- Query Results -->
+                <div class="results-section" id="resultsSection" style="display: none;">
+                    <div class="results-header">
+                        <h3><i class="fas fa-table"></i> Query Results</h3>
+                        <div class="results-info">
+                            <span id="rowCount"></span>
+                            <button class="btn btn-sm" onclick="exportResults()">
+                                <i class="fas fa-download"></i> Export CSV
+                            </button>
+                        </div>
+                    </div>
+                    <div class="results-container" id="resultsContainer"></div>
+                </div>
+            </section>
+
+            <!-- Features Section -->
+            <section class="features-section">
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <i class="fas fa-shield-alt feature-icon"></i>
+                        <h4>Secure by Design</h4>
+                        <p>Read-only queries with SQL injection protection</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-brain feature-icon"></i>
+                        <h4>GPT-4 Powered</h4>
+                        <p>Advanced AI understanding of your questions</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-bolt feature-icon"></i>
+                        <h4>Lightning Fast</h4>
+                        <p>Intelligent caching for instant repeated queries</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-lock feature-icon"></i>
+                        <h4>100% Private</h4>
+                        <p>Your data stays local, never leaves your server</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p id="loadingText">Processing...</p>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container" id="toastContainer"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
